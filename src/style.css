@@ -3,16 +3,42 @@
     -fx-control-inner-background: derive(-fx-base,10%);
     -fx-font-family: 'Helvetica', Arial, sans-serif;
 }
+
 .button {
     -fx-focus-traversable: false;
 }
 #createButton {
     -fx-font-size: 32px;
 }
-.text-area,
+#codeArea,
 #muuttujatTextField{
     -fx-font-size: 18px;
     -fx-prompt-text-fill: lightgray;
+    -fx-font-family: 'Helvetica', Arial, sans-serif;
+}
+#codeArea {
+    -fx-text-inner-color: derive(-fx-base,10%);
+    -fx-background-color: derive(-fx-base,10%);
+    -fx-padding: 6;
+    -fx-text-fill: white;
+}
+#codeArea .text{
+    -fx-fill: #FFFFFF;
+}
+.variable {
+    -fx-fill: #FFAA00 !important;
+}
+.doubleDot {
+    -fx-fill: yellow !important;
+}
+.function {
+    -fx-fill: lime !important;
+}
+#codeArea .caret {
+    -fx-stroke: white;
+}
+#muuttujaLabel {
+    -fx-font-size: 26px;
 }
 .list-cell:even,
 .list-cell:odd {
@@ -23,9 +49,6 @@
     -fx-background-color: derive(-fx-base,10%);
     -fx-background-color: -fx-accent;
     -fx-text-fill: white;
-}
-.list-view {
-    -fx-focus-traversable: false;
 }
 
 .list-cell:empty {
