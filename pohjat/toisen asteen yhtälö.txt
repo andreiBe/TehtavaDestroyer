@@ -1,0 +1,12 @@
+<start>
+d*x^2+e*x+f=0
+x\ =\frac{-b\ \pm\sqrt{b^2-4ac}}{2a}
+=\frac{-e\ \pm\sqrt{e^2-4*d*f}}{2*d}
+=\frac{#count[-e]\pm\sqrt{#count[e^2-4*d*f]}}{#count[2*d] }
+=\frac{#count[-e]\pm#count[(e^2-4*d*f)^0.5]}{#count[2*d] }
+x=\frac{#count[-e+(e^2-4*d*f)^0.5]}{#count[2*d]}#ifInt[(-e+(e^2-4*d*f)^0.5)/(2*d)]
+tai
+x=\frac{#count[-e-(e^2-4*d*f)^0.5]}{#count[2*d]}#ifInt[(-e-(e^2-4*d*f)^0.5)/(2*d)]
+<t> Vastaus:
+<end>
+d,e,f

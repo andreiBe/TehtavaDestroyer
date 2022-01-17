@@ -1,0 +1,15 @@
+<start>
+m(a) = b g
+V = e l
+M(a) = d g/mol
+n\ =\ \frac{m\left(a\right)}{M\left(a\right)}
+n\ =\frac{b\ g}{d\ \frac{g}{mol}}
+n\approx#count[b/d;+2]\ mol
+c=?
+c = \frac{n}{V}
+c = \frac{#count[b/d;+2]\ mol}{e\ l}\approx#count[b/d/e]\ mol/l
+<t> konsentraatio on noin: #count[b/d/e] mol/l
+
+
+<end>
+a,b,e,d
