@@ -24,7 +24,7 @@ class KoodiParserTest {
         String[] muuttujat = {"a","b","c"};
         String[] arvot = {"lol","8","1,98743"};
         String koodi = "a+b*x / c\n<t>just text,";
-        Instruction expected = new Instruction("lol+8*x / 1{,}98743",false);
+        Instruction expected = new Instruction("lol+8x / 1{,}98743",false);
         Instruction expected2 = new Instruction("just text,",true);
         List<Instruction> result = koodiParser.parse(koodi,muuttujat,arvot);
         assertEquals(expected.getMessage(), result.get(0).getMessage());

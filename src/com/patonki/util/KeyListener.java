@@ -1,5 +1,5 @@
 package com.patonki.util;
 
-public interface Event<T> {
+public interface KeyListener<T> {
     void run(T val, boolean ctrlPressed);
 }

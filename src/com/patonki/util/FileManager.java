@@ -1,4 +1,6 @@
-package com.patonki;
+package com.patonki.util;
+
+import com.patonki.KaavaTiedosto;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -7,10 +9,13 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Scanner;
 
+/**
+ * Sisältää apumetodeja tiedostojen käsittelyyn.
+ */
 public class FileManager {
     private final ArrayList<String> files = new ArrayList<>();
 
-    public String[] initialize() {
+    public String[] tiedostotPohjatKansiossa() {
         File kansio = new File("pohjat");
         if (!kansio.exists()) kansio.mkdir(); //luodaan kansio, jos sitä ei ole
         File[] files = kansio.listFiles();
@@ -35,7 +40,7 @@ public class FileManager {
         writer.write(sisalto);
         writer.close();
     }
-    public String uniqueFile() {
+    public String uniqueFile() { //palauttaa nimeämättömän tiedoston, jolla on uniikki numero tunnus
         int number = 0;
         while (this.files.contains("unnamed ("+number+")")) {
             number++;
@@ -47,9 +52,9 @@ public class FileManager {
         File f = new File("pohjat/"+valittu+".txt");
         f.delete();
     }
-    public void renameFile(String oldName, String newName) {
+    public boolean renameFile(String oldName, String newName) {
         File org = new File("pohjat/"+oldName+".txt");
-        org.renameTo(new File("pohjat/"+newName+".txt"));
+        return org.renameTo(new File("pohjat/"+newName+".txt"));
     }
     public KaavaTiedosto readFile(String nimi) throws IOException {
         Scanner scanner = new Scanner(Paths.get("pohjat/"+nimi+".txt"));
@@ -60,7 +65,10 @@ public class FileManager {
             koodi.append(rivi).append("\n");
             rivi = scanner.nextLine();
         }
-        String muuttujat = scanner.nextLine();
+        //Poistetaan viimeinen rivinvaihto
+        if (koodi.length() > 0) koodi.setLength(koodi.length()-1);
+        String muuttujat = "";
+        if (scanner.hasNextLine()) muuttujat = scanner.nextLine();
         return new KaavaTiedosto(koodi.toString(),muuttujat,nimi);
     }
 }

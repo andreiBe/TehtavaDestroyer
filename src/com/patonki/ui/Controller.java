@@ -1,14 +1,20 @@
 package com.patonki.ui;
 
 import com.patonki.KaavaTiedosto;
-import com.patonki.FileManager;
+import com.patonki.util.FileManager;
 import javafx.event.ActionEvent;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.AnchorPane;
+import org.fxmisc.flowless.VirtualizedScrollPane;
+import org.fxmisc.richtext.CodeArea;
 
 import java.io.IOException;
 import java.net.URL;
@@ -16,25 +22,38 @@ import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
+/**
+ * Sisältää käyttöliittymän toiminnallisuuden, eli se mitä tapahtuu kun nappeja painetaan.
+ */
 public class Controller implements Initializable {
-    public ScrollPane scrollPane;
+    private final FileManager fileManager = new FileManager();
+    public AnchorPane scrollPaneAlue;
     public TextField muuttujatTextField;
     public CustomTextArea codeArea;
     public ListView<String> pohjatListView;
-    private final FileManager fileManager = new FileManager();
     private String currentFile;
     private boolean muutoksiaTapahtunut = false;
+
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        //Kun ikkuna yritetään sulkea
         Ohjelma.STAGE.setOnCloseRequest(e -> {
-            avaaTallennaPopUp();
-            System.exit(0);
+            avaaTallennaPopUp(); //tarkistaa haluaako käyttäjä tallentaa tiedoston
+            System.exit(0); //lopettaa ohjelman
         });
         codeArea = new CustomTextArea(this);
-        codeArea.setId("codeArea");
-        scrollPane.setContent(codeArea);
+        codeArea.setId("codeArea"); //mahdollistaa css avulla muokkaamisen
+
+        VirtualizedScrollPane<CodeArea> scrollPane = new VirtualizedScrollPane<>(codeArea);
+        //Asetetaan scrollPane siten, että se täyttää koko tilan
+        AnchorPane.setRightAnchor(scrollPane, 0d);
+        AnchorPane.setLeftAnchor(scrollPane, 0d);
+        AnchorPane.setTopAnchor(scrollPane, 0d);
+        AnchorPane.setBottomAnchor(scrollPane, 0d);
+        scrollPaneAlue.getChildren().add(scrollPane);
         //Tekee solut editoitaviksi tuplaklikkaamalla
         pohjatListView.setCellFactory(TextFieldListCell.forListView());
+        //Kun käyttäjä muokkaa tekstiä, teksti pitää ehkä tallentaa
         codeArea.textProperty().addListener((observable, oldValue, newValue) -> {
             muutoksiaTapahtunut = true;
         });
@@ -42,35 +61,48 @@ public class Controller implements Initializable {
             muutoksiaTapahtunut = true;
         });
         pohjatListView.setOnKeyReleased(e -> {
-            //Kun listan solu on nimetty, focus siirtyy koodin kirjoitus alueeseen
+            //Enteriä painetaan, kun tiedosto uudelleen nimetään
             if (e.getCode() == KeyCode.ENTER) {
                 String uusiNimi = getValittuTiedosto();
                 String vanhaNimi = currentFile;
-                fileManager.renameFile(vanhaNimi,uusiNimi);
-                currentFile = uusiNimi;
-                codeArea.requestFocus();
+                if (fileManager.renameFile(vanhaNimi, uusiNimi)) { //uudelleen nimeäminen onnistui
+                    currentFile = uusiNimi;
+                    codeArea.requestFocus(); //focus teksti alueeseen
+                }
+                //TODO käsittele tilanne, jossa uudelleen nimeäminen ei onnistu
             }
+            //Poistetaan jokin listasta
             if (e.getCode() == KeyCode.DELETE) {
                 String valittu = getValittuTiedosto();
                 if (valittu != null) {
+                    //Poistetaan sekä oikea tiedosto että listan kohta
                     fileManager.deleteFile(valittu);
                     pohjatListView.getItems().remove(valittu);
                 }
             }
         });
-        //Lisätään kaikki tiedostot pohjat kansiosta listaan
-        String[] tiedostot = fileManager.initialize();
+        //Lisätään kaikki tiedostot kansiosta "pohjat" listaan
+        String[] tiedostot = fileManager.tiedostotPohjatKansiossa();
         for (String tiedosto : tiedostot) {
             pohjatListView.getItems().add(tiedosto);
         }
-        currentFile = fileManager.uniqueFile();
+        currentFile = fileManager.uniqueFile(); //aluksi avataan nimeämätön tiedosto
         Ohjelma.STAGE.setOnShown(e -> {
+            //Focus on aluksi kirjoitusalueella
             codeArea.requestFocus();
         });
     }
+
     public void lisaaPohja(ActionEvent event) { //Tapahtuu, kun käyttäjä painaa "lisää" nappia
-        pohjatListView.getItems().add("Nimeämätön pohja");
+        String uusiTiedosto = fileManager.uniqueFile();
+        pohjatListView.getItems().add(uusiTiedosto);
+        try {
+            fileManager.saveFile(uusiTiedosto, "", "");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
+
     //Palauttaa listan solun, joka on valittuna tai null, jos mitään ei olla valittu
     private String getValittuTiedosto() {
         List<String> list = pohjatListView.getSelectionModel().getSelectedItems();
@@ -79,29 +111,35 @@ public class Controller implements Initializable {
         }
         return null;
     }
+
+    //Kysyy käyttäjältä haluaako tallentaa nykyisen tiedoston.
+    // Kysyy vain jos muutoksia on tapahtunut viimeisimmästä tallennuskerrasta.
     public void avaaTallennaPopUp() {
         if (muutoksiaTapahtunut) {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setTitle("Tallennatko?");
-            alert.setContentText("Haluatko tallentaa nykyisen tiedoston: "+currentFile);
+            alert.setContentText("Haluatko tallentaa nykyisen tiedoston: " + currentFile);
             alert.getButtonTypes().setAll(ButtonType.NO, ButtonType.YES);
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.YES) {
-                tallennaTiedosto();
+                tallennaTiedosto(); //Käyttäjä painoi yes nappia
             }
         }
     }
+
     public String[] getMuuttujat() {
         return muuttujatTextField.getText().split(",");
     }
+
     //Tapahtuu, kun listaa klikataan
     public void listViewClicked(MouseEvent event) {
         if (event.getClickCount() == 1) { //ei tuplaklikki
             String tiedostoNimi = getValittuTiedosto();
-            if (tiedostoNimi != null) {
-                avaaTallennaPopUp();
+            if (tiedostoNimi != null) { //käyttäjä klikkaa tiedostoa eikä tyhjää tilaa
+                avaaTallennaPopUp(); //kysyy haluaako käyttäjä tallentaa nykyisen tiedoston ennen siirtymistä
                 try {
                     KaavaTiedosto tiedosto = fileManager.readFile(tiedostoNimi);
+
                     codeArea.setText(tiedosto.getKoodi());
                     muuttujatTextField.setText(tiedosto.getMuuttujat());
                     muutoksiaTapahtunut = false;
@@ -112,39 +150,43 @@ public class Controller implements Initializable {
             }
         }
     }
+
     private KaavaTiedosto tallennaTiedosto() {
         String koodi = codeArea.getText();
         String muuttujat = muuttujatTextField.getText();
         String tiedosto = currentFile;
         muutoksiaTapahtunut = false;
+        //Jos lista ei jostain syystä sisällä tiedostoa lisätään se sinne
         if (!pohjatListView.getItems().contains(tiedosto)) pohjatListView.getItems().add(tiedosto);
         try {
             //tallennetaan tiedosto
-            fileManager.saveFile(tiedosto,koodi,muuttujat);
+            fileManager.saveFile(tiedosto, koodi, muuttujat);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return new KaavaTiedosto(koodi,muuttujat,tiedosto);
+        return new KaavaTiedosto(koodi, muuttujat, tiedosto);
     }
+
     //Tapahtuu, kun "luo" nappia painetaan
     public void create(ActionEvent event) {
-        KaavaTiedosto tiedosto = tallennaTiedosto();
+        KaavaTiedosto tiedosto = tallennaTiedosto(); //ensin tiedosto tallennetaan
+        //Luodaan avautuva ikkuna ja näytetään se
         TehtavaDestroyer tehtavaDestroyer = new TehtavaDestroyer(tiedosto);
         tehtavaDestroyer.show();
     }
 
     public void shortCut(KeyEvent e) {
         if (e.isControlDown()) {
-            if (e.getCode()==KeyCode.R) {
+            if (e.getCode() == KeyCode.R) {
                 create(null);
             }
-            if (e.getCode()==KeyCode.E) {
+            if (e.getCode() == KeyCode.E) {
                 pohjatListView.requestFocus();
             }
             if (e.getCode() == KeyCode.T) {
                 codeArea.requestFocus();
             }
-            if (e.getCode()==KeyCode.W) {
+            if (e.getCode() == KeyCode.W) {
                 muuttujatTextField.requestFocus();
             }
         }

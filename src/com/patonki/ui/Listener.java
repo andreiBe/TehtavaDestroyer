@@ -1,26 +1,18 @@
 package com.patonki.ui;
 
-import com.patonki.util.Event;
+import com.patonki.util.KeyListener;
 import org.jnativehook.GlobalScreen;
 import org.jnativehook.NativeHookException;
 
-import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Kuuntelee näppäinten painalluksia. Tarkoitus ajaa eri Threadissa.
+ * Kuuntelee näppäinten painalluksia.
  */
-public class Listener implements Runnable{
+public class Listener{
     private GlobalKeyListener globalKeyListener;
-    private final Event<Integer> event;
-
-    public Listener(Event<Integer> event) {
-        this.event = event;
-    }
-
-    @Override
-    public void run() {
+    public Listener() {
         try {
             Logger logger = Logger.getLogger(GlobalScreen.class.getPackage().getName());
             logger.setLevel(Level.WARNING);
@@ -29,11 +21,16 @@ public class Listener implements Runnable{
             GlobalScreen.registerNativeHook();
             globalKeyListener = new GlobalKeyListener();
             GlobalScreen.addNativeKeyListener(globalKeyListener);
-            globalKeyListener.setOnKeyReleased(event);
-            //GlobalScreen.addNativeMouseListener(new GlobalMouseListener(script));
         } catch (NativeHookException e) {
             e.printStackTrace();
         }
     }
+    public void addKeyListener(KeyListener<Integer> listener) {
+        globalKeyListener.addListener(listener);
+    }
+    public void removeKeyListener(KeyListener<Integer> listener) {
+        globalKeyListener.removeListener(listener);
+    }
+
 }
 

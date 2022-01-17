@@ -4,7 +4,7 @@ import com.patonki.Instruction;
 import com.patonki.KaavaTiedosto;
 import com.patonki.Kirjoittaja;
 import com.patonki.KoodiParser;
-import com.patonki.util.Event;
+import com.patonki.util.KeyListener;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -12,15 +12,27 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 
+/**
+ * Sisältää käyttöliittymän ja toiminnallisuuden macron ajamiseen näppäin komennolla
+ */
 public class TehtavaDestroyer {
-    private static boolean[] usedKeys = new boolean[11];
-    private final Stage ikkuna;
-    private int key;
+    private static final boolean[] usedKeys = new boolean[10]; //f napit, jotka ovat jo jonkin toisen makron käytössä
+    private static final Listener listener = new Listener(); //kuuntelee näppäinten painalluksia
+    private final KaavaTiedosto tiedosto; //tiedosto, jota suoritetaan
+    private final Stage ikkuna; //käyttöliittymä ikkuna
+    private int key; // f-nappi, jolla macro ajetaan esim f1
+    //Jos käyttäjä painaa controllia ja oikeata f-nappia macro ajetaan
+    private final KeyListener<Integer> keyListener = (key, ctrlPressed) -> {
+        if (ctrlPressed && key == this.key) {
+            execute();
+        }
+    };
+    //Käyttöliittymän controlleri
     private DestroyerController controller;
-    private KaavaTiedosto tiedosto;
+
+    //Palauttaa f-napin, joka ei ole käytössä missään muussa auki olevassa macrossa
     private static int getUniqueKey() {
         for (int i = 1; i < 10; i++) {
             if (!usedKeys[i]) {
@@ -28,14 +40,16 @@ public class TehtavaDestroyer {
                 return 58 + i; //59 == f1
             }
         }
+        //f-napit loppuu kesken
         throw new IllegalArgumentException("Too many opened windows!");
     }
     public TehtavaDestroyer(KaavaTiedosto kaavaTiedosto) {
         ikkuna = new Stage();
-        ikkuna.setAlwaysOnTop(true);
+        ikkuna.setAlwaysOnTop(true); //pysyy ikkunoiden päällä eikä jää taakse
         ikkuna.setOnCloseRequest(e -> usedKeys[key-58] = false);
         ikkuna.setTitle("Tehtävä destoyer 69");
         ikkuna.getIcons().add(new Image("/book.png"));
+        //Ladataan fxml tiedosto
         FXMLLoader fxml = new FXMLLoader(TehtavaDestroyer.class.getResource("/destroyer.fxml"));
         try {
             Parent parent = fxml.load();
@@ -46,26 +60,31 @@ public class TehtavaDestroyer {
             e.printStackTrace();
         }
         this.tiedosto = kaavaTiedosto;
+
         key = getUniqueKey();
-        controller.lab.setText("Press f"+(key-58)+" to execute");
         String[] muuttujat = kaavaTiedosto.getMuuttujat().split(",");
-        controller.initializeUi(muuttujat);
-        Listener listener = new Listener((key,cntr) -> {
-            if (cntr && key == this.key) {
-                execute();
-            }
+        //Luo teksti ruudut joihin käyttäjä voi kirjoittaa
+        controller.initializeUi(muuttujat, key-58);
+        //aloittaa kuuntelun
+        TehtavaDestroyer.listener.addKeyListener(keyListener);
+        ikkuna.setOnCloseRequest(e -> {
+            //Ei kuunnella enää napin painalluksia muuten macron suoritus alkaisi edelleen vaikka
+            //ikkuna on kiinni
+            TehtavaDestroyer.listener.removeKeyListener(keyListener);
+            usedKeys[key-58] = false; //näppäintä voi nyt käyttää jokin muu macro
         });
-        new Thread(listener).start();
     }
     private void execute() {
-        KoodiParser parser = new KoodiParser();
         String[] muuttujat = tiedosto.getMuuttujat().split(",");
-        String[] arvot = new String[muuttujat.length];
+        String[] arvot = new String[muuttujat.length]; //arvot, jotka käyttäjä antoi
         for (int i = 0; i < muuttujat.length; i++) {
             String value = controller.getValue(muuttujat[i]);
             arvot[i] = value;
         }
+        //Parser muuttaa tekstin listaksi ohjeita, jotka Kirjoittaja voi suorittaa
+        KoodiParser parser = new KoodiParser();
         List<Instruction> ohjeet = parser.parse(tiedosto.getKoodi(),muuttujat,arvot);
+        //Suoritetaan ohjeet
         Kirjoittaja kirjoittaja = new Kirjoittaja();
         kirjoittaja.teeTehtava(ohjeet);
     }

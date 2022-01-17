@@ -1,5 +1,8 @@
 package com.patonki;
 
+/**
+ * Ohje Kirjoittajalle. Sisältää tekstin minkä kirjoittaa ja sen pitääkö se kirjoittaa kaavamuodossa.
+ */
 public class Instruction {
     private final String message;
     private final boolean justText;

@@ -1,18 +1,20 @@
 package com.patonki.ui;
 
-import com.patonki.util.Event;
+import com.patonki.util.KeyListener;
 import org.jnativehook.keyboard.NativeKeyEvent;
 import org.jnativehook.keyboard.NativeKeyListener;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Kuuntelee näppäinten painalluksia globaalisti, eli
  * ohjelman ei tarvitse olla edes näkyvissä.
  */
 public class GlobalKeyListener implements NativeKeyListener {
-    private Event<Integer> releasedEvent;
-    private HashMap<Integer,Boolean> pressedKeys = new HashMap<>();
+    private final HashMap<Integer,Boolean> pressedKeys = new HashMap<>();
+    private final List<KeyListener<Integer>> listeners = new ArrayList<>();
     public GlobalKeyListener() {
 
     }
@@ -26,17 +28,21 @@ public class GlobalKeyListener implements NativeKeyListener {
     public void nativeKeyPressed(NativeKeyEvent nativeKeyEvent) {
         pressedKeys.put(nativeKeyEvent.getKeyCode(),true);
     }
-    public void setOnKeyReleased(Event<Integer> event) {
-        releasedEvent = event;
+    public void addListener(KeyListener<Integer> listener) {
+        listeners.add(listener);
+    }
+    public void removeListener(KeyListener<Integer> listener) {
+        listeners.remove(listener);
     }
 
     @Override
     public void nativeKeyReleased(NativeKeyEvent nativeKeyEvent) {
         pressedKeys.put(nativeKeyEvent.getKeyCode(),false);
-        if (releasedEvent == null) return;
         int key = nativeKeyEvent.getKeyCode();
         Boolean cntrl = pressedKeys.get(29);
-        releasedEvent.run(key, cntrl != null && cntrl);
+        for (KeyListener<Integer> listener : listeners) {
+            listener.run(key, cntrl != null && cntrl);
+        }
     }
 
 }

@@ -1,5 +1,9 @@
 package com.patonki;
 
+/**
+ * Luokka, jonka ainut tehtävä on tallentaa tietoa kaavaan liittyen. Tallentaa:
+ * Käyttäjän kirjoittaman koodin, käyttäjän määrittelemät muuttujat ja tiedoston nimen.
+ */
 public class KaavaTiedosto {
     private final String koodi;
     private final String muuttujat;

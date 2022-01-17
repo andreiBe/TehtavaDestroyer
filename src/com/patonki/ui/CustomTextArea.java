@@ -9,20 +9,23 @@ import org.reactfx.Subscription;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Erityinen teksti alue, joka värittää funktiot ja muuttujat tekstistä.
+ */
 public class CustomTextArea extends CodeArea {
-    private final ExecutorService executor;
-    private final Controller controller;
+    private final ExecutorService executor; //ajaa syntaxin värityksen eri threadissa
+    private final Controller controller; //käyttöliittymän toiminnallisuus luokka
 
     public CustomTextArea(Controller controller) {
         super();
         this.controller = controller;
+        //Värittää metodit ja funktiot joka 500 millisekuntti muutosten jälkeen
         executor = Executors.newSingleThreadExecutor();
         Subscription subscription = multiPlainChanges()
                 .successionEnds(Duration.ofMillis(500))
@@ -38,26 +41,31 @@ public class CustomTextArea extends CodeArea {
                 })
                 .subscribe(this::applyHighlighting);
     }
+
     private void applyHighlighting(StyleSpans<Collection<String>> highlighting) {
-        setStyleSpans(0, highlighting);
+        setStyleSpans(0, highlighting); //antaa teksti alueelle listan kohtia mitkä pitää värittää
     }
+
     private StyleSpans<Collection<String>> computeHighlighting(String text) {
         String[] muuttujat = this.controller.getMuuttujat();
         StringBuilder regex = new StringBuilder();
+        //Kerää kaikki muuttujat regex arvoon, jotta ne kaikki voidaan tunnistaa
         for (String muuttuja : muuttujat) {
             regex.append("\\b").append(muuttuja).append("\\b|");
         }
-
+        //Muuttujat, funktiot ja tuplapisteet väritetään eri värillä
         Matcher matcher = Pattern.compile(
-                "(?<VARIABLE>"+regex.substring(0,regex.length()-1)+")"
-                +"|(?<FUNCTION>"+"#\\w+\\[|\\]"+")"
-                +"|(?<DOUBLEDOT>"+";"+")"
+                "(?<VARIABLE>" + regex.substring(0, regex.length() - 1) + ")"
+                        + "|(?<FUNCTION>" + "#\\w+\\[|\\]" + ")"
+                        + "|(?<DOUBLEDOT>" + ";" + ")"
         ).matcher(text);
         int lastKwEnd = 0;
         StyleSpansBuilder<Collection<String>> spansBuilder
                 = new StyleSpansBuilder<>();
-        while(matcher.find()) {
-            String styleClass =matcher.group("VARIABLE") != null ? "variable" :
+        //Etsitään matcheja ja lisätään niitä vastaava styleClass listaan
+        //Huomaa esim. .variable css luokka löytyy css tiedostosta
+        while (matcher.find()) {
+            String styleClass = matcher.group("VARIABLE") != null ? "variable" :
                     matcher.group("FUNCTION") != null ? "function" :
                             matcher.group("DOUBLEDOT") != null ? "doubleDot" : null;
             assert styleClass != null;
@@ -68,17 +76,19 @@ public class CustomTextArea extends CodeArea {
         spansBuilder.add(Collections.emptyList(), text.length() - lastKwEnd);
         return spansBuilder.create();
     }
+
     private Task<StyleSpans<Collection<String>>> computeHighlightingAsync() {
         String text = getText();
         Task<StyleSpans<Collection<String>>> task = new Task<StyleSpans<Collection<String>>>() {
             @Override
-            protected StyleSpans<Collection<String>> call() throws Exception {
+            protected StyleSpans<Collection<String>> call() {
                 return computeHighlighting(text);
             }
         };
         executor.execute(task);
         return task;
     }
+
     public void setText(String koodi) {
         clear();
         appendText(koodi);

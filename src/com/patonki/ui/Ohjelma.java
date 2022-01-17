@@ -7,8 +7,13 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
+/**
+ * Avaa ui ikkunan ja lataa sen elementit fxml tiedostosta.
+ * Luokka: {@link Controller} hoitaa käyttöliittymän toiminnallisuuden.
+ */
 public class Ohjelma extends Application {
     public static Stage STAGE;
+
     public static void aloita() {
         // Kutsuu start metodia uudessa javafx threadissä
         launch(Ohjelma.class);
@@ -28,6 +33,7 @@ public class Ohjelma extends Application {
 
         Scene scene = new Scene(parent);
         primaryStage.setScene(scene);
+        //Ohjataan eventit Controllerille
         scene.setOnKeyReleased(controller::shortCut);
         primaryStage.getIcons().add(new Image("/book.png"));
         primaryStage.setTitle("Tehtävä destroyer 69");
