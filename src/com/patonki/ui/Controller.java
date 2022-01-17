@@ -2,7 +2,9 @@ package com.patonki.ui;
 
 import com.patonki.KaavaTiedosto;
 import com.patonki.util.FileManager;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -51,6 +53,8 @@ public class Controller implements Initializable {
         AnchorPane.setTopAnchor(scrollPane, 0d);
         AnchorPane.setBottomAnchor(scrollPane, 0d);
         scrollPaneAlue.getChildren().add(scrollPane);
+
+
         //Tekee solut editoitaviksi tuplaklikkaamalla
         pohjatListView.setCellFactory(TextFieldListCell.forListView());
         //Kun käyttäjä muokkaa tekstiä, teksti pitää ehkä tallentaa
@@ -60,17 +64,16 @@ public class Controller implements Initializable {
         muuttujatTextField.textProperty().addListener((observable, oldValue, newValue) -> {
             muutoksiaTapahtunut = true;
         });
+        pohjatListView.setOnEditCommit(event -> {
+            String uusiNimi = event.getNewValue();
+            String vanhaNimi = event.getSource().getItems().get(event.getIndex());
+            if (fileManager.renameFile(vanhaNimi, uusiNimi)) { //uudelleen nimeäminen onnistui
+                currentFile = uusiNimi;
+                codeArea.requestFocus(); //focus teksti alueeseen
+                pohjatListView.getItems().set(event.getIndex(),uusiNimi);
+            } //TODO error message
+        });
         pohjatListView.setOnKeyReleased(e -> {
-            //Enteriä painetaan, kun tiedosto uudelleen nimetään
-            if (e.getCode() == KeyCode.ENTER) {
-                String uusiNimi = getValittuTiedosto();
-                String vanhaNimi = currentFile;
-                if (fileManager.renameFile(vanhaNimi, uusiNimi)) { //uudelleen nimeäminen onnistui
-                    currentFile = uusiNimi;
-                    codeArea.requestFocus(); //focus teksti alueeseen
-                }
-                //TODO käsittele tilanne, jossa uudelleen nimeäminen ei onnistu
-            }
             //Poistetaan jokin listasta
             if (e.getCode() == KeyCode.DELETE) {
                 String valittu = getValittuTiedosto();

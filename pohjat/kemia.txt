@@ -9,7 +9,5 @@ c=?
 c = \frac{n}{V}
 c = \frac{#count[b/d;+2]\ mol}{e\ l}\approx#count[b/d/e]\ mol/l
 <t> konsentraatio on noin: #count[b/d/e] mol/l
-
-
 <end>
-a,b,e,d
+a,b,d,e
