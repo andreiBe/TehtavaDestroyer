@@ -7,9 +7,7 @@ import org.fxmisc.richtext.model.StyleSpansBuilder;
 import org.reactfx.Subscription;
 
 import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -45,17 +43,40 @@ public class CustomTextArea extends CodeArea {
     private void applyHighlighting(StyleSpans<Collection<String>> highlighting) {
         setStyleSpans(0, highlighting); //antaa teksti alueelle listan kohtia mitkä pitää värittää
     }
-
+    //Kerää kaikki käyttäjän määrittelemät muuttujat listaan
+    //muuttujan voi määritellä koodissa: x = 98
+    private List<String> collectMuuttujat(String text) {
+        ArrayList<String> muuttujat = new ArrayList<>();
+        String[] lines = text.split("\n");
+        Pattern setterPatern = Pattern.compile("#\\s*[^=]+\\s*=");
+        for (String line : lines) {
+            Matcher matcher = setterPatern.matcher(line);
+            if (matcher.find()) {
+                String muuttuja =line.substring(1,line.indexOf("=")).replaceAll(" ","");
+                muuttujat.add(muuttuja);
+            }
+        }
+        return muuttujat;
+    }
     private StyleSpans<Collection<String>> computeHighlighting(String text) {
-        String[] muuttujat = this.controller.getMuuttujat();
+        List<String> muuttujat = this.controller.getMuuttujatAsList();
+        muuttujat.addAll(collectMuuttujat(text));
+
         StringBuilder regex = new StringBuilder();
         //Kerää kaikki muuttujat regex arvoon, jotta ne kaikki voidaan tunnistaa
         for (String muuttuja : muuttujat) {
             regex.append("\\b").append(muuttuja).append("\\b|");
         }
+        if (regex.length() > 0) {
+            regex.setLength(regex.length()-1); //viimeinen | pois
+        } else {
+            //Regex ei toimi, jos etsittävä on tyhjä merkkijono, joten laitetaan tilalle merkkijono
+            //, jota ei ikinä vahingossa kirjoiteta
+            regex.append("placeholderVariableNotSupposedToBeTyped");
+        }
         //Muuttujat, funktiot ja tuplapisteet väritetään eri värillä
         Matcher matcher = Pattern.compile(
-                "(?<VARIABLE>" + regex.substring(0, regex.length() - 1) + ")"
+                "(?<VARIABLE>" + regex.toString() + ")"
                         + "|(?<FUNCTION>" + "#\\w+\\[|\\]" + ")"
                         + "|(?<DOUBLEDOT>" + ";" + ")"
         ).matcher(text);

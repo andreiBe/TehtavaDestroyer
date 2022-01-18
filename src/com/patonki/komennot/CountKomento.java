@@ -3,6 +3,7 @@ package com.patonki.komennot;
 import com.fathzer.soft.javaluator.DoubleEvaluator;
 import com.patonki.Komento;
 import com.patonki.KoodiParser;
+import com.patonki.virheet.KomentoVirhe;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -12,7 +13,8 @@ import java.math.MathContext;
  */
 public class CountKomento implements Komento {
     @Override
-    public String run(String[] params, KoodiParser parser) {
+    public String run(String[] params, KoodiParser parser) throws KomentoVirhe {
+        if (params.length == 0) throw new KomentoVirhe("Liian vähän parametreja:0","null",true);
         //Luokka, jolla voi laskea merkkijono laskuja
         DoubleEvaluator evaluator = new DoubleEvaluator();
         //Korvataan suomalaisten suosimat pilkut pisteillä
@@ -20,6 +22,7 @@ public class CountKomento implements Komento {
         //poistetaan latex sulkeet: \left( ja \right( --> ( ja )
         lasku = lasku.replace("\\left","");
         lasku = lasku.replace("\\right","");
+        lasku = lasku.replace("\\cdot","*");
 
         int merkitsevat;
         if (params.length > 1) {
@@ -34,16 +37,45 @@ public class CountKomento implements Komento {
                 double tulos = evaluator.evaluate(lasku);
                 return String.valueOf(Math.round(tulos));
             }
-            //Huom. tarkkuus 0 tarkoittaa ei pyöristystä ollenkaan
+            else if (tarkkuus.equals("0")) { //sama kuin epätarkin lähtöarvo
+                merkitsevat = parser.getMerkitsevatNumerot();
+            }
             else { //juuri niin monta merkitsevää numeroa kuin käyttäjä haluaa
-                merkitsevat = Integer.parseInt(tarkkuus);
+                try {
+                    merkitsevat = Integer.parseInt(tarkkuus);
+                } catch (NumberFormatException e) {
+                    throw new KomentoVirhe("Ei sovi tarkkuudeksi: "+tarkkuus,"null",true);
+                }
             }
             //Jos parametria ei ole käytetään vastaustarkkuutta
-        } else merkitsevat = parser.getMerkitsevatNumerot();
-
-        double tulos = evaluator.evaluate(lasku);
-
-        BigDecimal pyoristetty = new BigDecimal(tulos).round(new MathContext(merkitsevat));
-        return pyoristetty.toPlainString();
+        } else merkitsevat = 0;
+        try {
+            double tulos = evaluator.evaluate(lasku);
+            BigDecimal pyoristetty = new BigDecimal(tulos).round(new MathContext(merkitsevat));
+            if (merkitsevat == 0) {
+                return max5Decimaalia(pyoristetty);
+            }
+            return pyoristetty.toPlainString();
+        } catch (NumberFormatException e) {
+            if (e.getMessage().equals("Infinite or NaN"))
+                throw new KomentoVirhe("Nollalla jakaminen tai neliöjuuri negatiivisesta luvusta",
+                        "Ei\\ voi\\ laskea");
+            throw new KomentoVirhe("Laskemisessa ongelma: "+lasku,"",true);
+        }
+        catch (RuntimeException e) {
+            e.printStackTrace();
+            throw new KomentoVirhe("Laskemisessa ongelma: "+lasku,"",true);
+        }
+    }
+    private String max5Decimaalia(BigDecimal bigDecimal) {
+        String[] split = bigDecimal.toPlainString().split("[,.]");
+        if (split.length > 1 && split[1].length() > 5) {
+            int i = Integer.parseInt(split[1].charAt(5)+"");
+            String desimaalit = split[1].substring(0,4);
+            int vika = Integer.parseInt(split[1].charAt(4)+"");
+            desimaalit += i >= 5 ? ((vika+1)+"").charAt(0) : (vika+"").charAt(0);
+            return split[0]+","+desimaalit;
+        }
+        return bigDecimal.toPlainString();
     }
 }

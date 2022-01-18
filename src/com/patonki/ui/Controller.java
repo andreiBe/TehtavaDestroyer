@@ -20,9 +20,7 @@ import org.fxmisc.richtext.CodeArea;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.List;
-import java.util.Optional;
-import java.util.ResourceBundle;
+import java.util.*;
 
 /**
  * Sisältää käyttöliittymän toiminnallisuuden, eli se mitä tapahtuu kun nappeja painetaan.
@@ -130,8 +128,9 @@ public class Controller implements Initializable {
         }
     }
 
-    public String[] getMuuttujat() {
-        return muuttujatTextField.getText().split(",");
+    public List<String> getMuuttujatAsList() {
+        if (muuttujatTextField.getText().isEmpty()) return new ArrayList<>();
+        return new ArrayList<>(Arrays.asList(muuttujatTextField.getText().split(",")));
     }
 
     //Tapahtuu, kun listaa klikataan

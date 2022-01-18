@@ -5,9 +5,12 @@ import com.patonki.KaavaTiedosto;
 import com.patonki.Kirjoittaja;
 import com.patonki.KoodiParser;
 import com.patonki.util.KeyListener;
+import com.patonki.virheet.ParserException;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
@@ -63,6 +66,7 @@ public class TehtavaDestroyer {
 
         key = getUniqueKey();
         String[] muuttujat = kaavaTiedosto.getMuuttujat().split(",");
+        if (kaavaTiedosto.getMuuttujat().isEmpty()) muuttujat=new String[0];
         //Luo teksti ruudut joihin käyttäjä voi kirjoittaa
         controller.initializeUi(muuttujat, key-58);
         //aloittaa kuuntelun
@@ -75,7 +79,7 @@ public class TehtavaDestroyer {
         });
     }
     private void execute() {
-        String[] muuttujat = tiedosto.getMuuttujat().split(",");
+        String[] muuttujat = tiedosto.getMuuttujatArray();
         String[] arvot = new String[muuttujat.length]; //arvot, jotka käyttäjä antoi
         for (int i = 0; i < muuttujat.length; i++) {
             String value = controller.getValue(muuttujat[i]);
@@ -83,12 +87,26 @@ public class TehtavaDestroyer {
         }
         //Parser muuttaa tekstin listaksi ohjeita, jotka Kirjoittaja voi suorittaa
         KoodiParser parser = new KoodiParser();
-        List<Instruction> ohjeet = parser.parse(tiedosto.getKoodi(),muuttujat,arvot);
-        //Suoritetaan ohjeet
-        Kirjoittaja kirjoittaja = new Kirjoittaja();
-        kirjoittaja.teeTehtava(ohjeet);
+        List<Instruction> ohjeet = null;
+        try {
+            ohjeet = parser.parse(tiedosto.getKoodi(),muuttujat,arvot);
+            //Suoritetaan ohjeet
+            Kirjoittaja kirjoittaja = new Kirjoittaja();
+            kirjoittaja.teeTehtava(ohjeet);
+        } catch (ParserException e) {
+            e.printStackTrace();
+            error(e);
+        }
     }
     public void show() {
         ikkuna.show();
+    }
+    private void error(ParserException e) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setContentText(e.getMessage());
+            alert.setTitle("Error!");
+            alert.showAndWait();
+        });
     }
 }

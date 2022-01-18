@@ -27,7 +27,7 @@ public class DestroyerController {
     }
     //Rakentaa käyttöliittymän
     public void initializeUi(String[] muuttujat, int fkey) {
-        lab.setText("Press f" + fkey + " to execute");
+        lab.setText("Paina control +f" + fkey + " suorittaaksesi");
         for (int i = 0; i < muuttujat.length; i++) {
             String muuttuja = muuttujat[i];
             HBox box = new HBox(); //mahdollistaa elementtien laittamisen vierekkäin

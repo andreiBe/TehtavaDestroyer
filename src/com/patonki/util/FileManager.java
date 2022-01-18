@@ -33,6 +33,7 @@ public class FileManager {
     }
     public void saveFile(String fileName, String koodi, String muuttujat) throws IOException {
         FileWriter writer = new FileWriter("pohjat/"+fileName+".txt");
+        muuttujat = muuttujat.replaceAll("\\s","");
         String sisalto = "<start>\n" +
                 koodi +
                 "\n<end>\n" +

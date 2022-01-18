@@ -22,6 +22,10 @@ public class KaavaTiedosto {
     public String getMuuttujat() {
         return muuttujat;
     }
+    public String[] getMuuttujatArray() {
+        if (muuttujat.trim().length()==0) return new String[0];
+        else return muuttujat.split(",");
+    }
 
     public String getNimi() {
         return nimi;

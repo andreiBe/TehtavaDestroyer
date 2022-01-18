@@ -1,12 +1,13 @@
 package com.patonki;
 
-import com.fathzer.soft.javaluator.DoubleEvaluator;
 import com.patonki.komennot.CountJosKokonaisLukuKomento;
 import com.patonki.komennot.CountKomento;
+import com.patonki.util.StringUtil;
+import com.patonki.virheet.KomentoVirhe;
+import com.patonki.virheet.ParserException;
 
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -17,125 +18,135 @@ import java.util.regex.Pattern;
  */
 public class KoodiParser {
     //Sisältää komennot, joita käyttäjä voi käyttää koodissaan
-    private final HashMap<String,Komento> komennot = new HashMap<>();
-
+    private final HashMap<String, Komento> komennot = new HashMap<>();
+    private final StringUtil stringUtil = new StringUtil();
+    private final ArrayList<String> muuttujat = new ArrayList<>();
+    private final ArrayList<String> arvot = new ArrayList<>();
+    private int merkitsevatNumerot;
     public KoodiParser() {
         komennot.put("count", new CountKomento());
         komennot.put("ifInt", new CountJosKokonaisLukuKomento());
     }
-    private int merkitsevatNumerot;
-    //palauttaa pienemmän merkitsevien numeroiden määrän arvojen keskuudesta
-    public int getMerkitsevatNumerot(String[] arvot) {
-        int min = Integer.MAX_VALUE;
-        for (String arvo : arvot) {
-            arvo = arvo.replace(",",".");
-            try {
-                int tulos = 0;
-                Double.parseDouble(arvo);
-                //Kopioin netistä regex kaavan
-                String[] osat = arvo.split("(^0+(\\.?)0*|(~\\.)0+$|\\.)");
-                for (String s : osat) {
-                    tulos += s.length();
-                }
-                min = Math.min(min,tulos);
-            } catch (NumberFormatException ignored) {}
-        }
-        return min;
-    }
-    //palauttaa seuraavan merkin joko oikealta tai vasemmalta, mutta ei hyväksy välilyöntejä
-    private char charAt(String koodi, int index, int dir) {
-        while (index > 0 && index < koodi.length()) {
-            if (koodi.charAt(index)==' ')index+=dir;
-            else return koodi.charAt(index);
-        }
-        return 0;
-    }
-    private boolean onKirjainTaiNumero(char c) {
-        if (c >= 'a' && c <= 'z') return true;
-        if (c >= 'A' && c <= 'A') return true;
-        if (c == 'ä' | c == 'ö' | c == 'å') return true;
-        if (c == 'Ä' | c == 'Ö' | c== 'Å') return true;
-        return c >= '0' && c <= '9';
-    }
-    public String korvaaMuuttujatArvoilla(String koodi, String[] muuttujat, String[] arvot) {
-        for (int i = 0; i < muuttujat.length; i++) {
-            String muuttuja = muuttujat[i];
+
+    public String korvaaMuuttujatArvoilla(String koodi, List<String> muuttujat, List<String> arvot) {
+        //Huom aloitetaan lopusta, koska siellä ovat koodissa määritellyt muuttujat
+        for (int i = muuttujat.size() - 1; i >= 0; --i) {
+            String muuttuja = muuttujat.get(i);
+            String muuttujanArvo = arvot.get(i);
             //Muuttuja ei ole osa sanaa \\b tarkoittaa sanan loppua tai alkua
-            Matcher matcher = Pattern.compile("\\b"+muuttuja+"\\b").matcher(koodi);
-            String korvaaja = arvot[i];
+            Matcher matcher = Pattern.compile("\\b" + muuttuja + "\\b").matcher(koodi);
             while (matcher.find()) {
                 int start = matcher.start(); //kohta, josta muuttuja alkaa
-                //Miinus luvut korotettuna toiseen pitää laittaa sulkeiden sisään
-                if (korvaaja.startsWith("-") && charAt(koodi,start+1,1)=='^') {
-                    koodi = koodi.replaceFirst(
-                            "\\b"+muuttuja+"\\b",
-                            Matcher.quoteReplacement("\\left("+korvaaja+"\\right)"));
+                //Miinus luvut korotettuna potenssiin pitää laittaa sulkeiden sisään
+                if (muuttujanArvo.startsWith("-") && stringUtil.seuraavaMerkki(koodi, start + 1) == '^') {
+                    koodi = stringUtil.korvaaMuuttujaSulkeidenKera(koodi, muuttuja, muuttujanArvo);
+                }
+                //* -8 --> * (-8)
+                else if (muuttujanArvo.startsWith("-") && stringUtil.edellinenMerkki(koodi, start - 1) == '*') {
+                    koodi = stringUtil.korvaaMuuttujaSulkeidenKera(koodi, muuttuja, muuttujanArvo);
                 } else {
-                    koodi = koodi.replaceFirst("\\b"+muuttuja+"\\b",korvaaja);
+                    koodi = koodi.replaceFirst("\\b" + muuttuja + "\\b", muuttujanArvo);
                 }
                 //luodaan uusi matcher, koska merkkijono vaihtui
-                matcher = Pattern.compile("\\b"+muuttuja+"\\b").matcher(koodi);
+                matcher = Pattern.compile("\\b" + muuttuja + "\\b").matcher(koodi);
             }
         }
         return koodi;
     }
 
-    public void setMerkitsevatNumerot(int merkitsevatNumerot) {
-        this.merkitsevatNumerot = merkitsevatNumerot;
-    }
+    public String maaritaFunktioidenArvot(String koodi) throws ParserException {
+        String[] rivit = koodi.split("\n");
+        for (int j = 0; j < rivit.length; j++) {
+            String rivi = rivit[j];
+            int i;
+            //etsitään #-merkkejä, koska se tarkoittaa funktiota
+            //Huom aloitetaan lopusta, koska funktiot saattavat olla sisäkkäin
+            while ((i = rivi.lastIndexOf("#")) != -1) {
+                int suljeAukeaa = rivi.indexOf("[", i);
+                int suljeSulkeutuu = rivi.indexOf("]", suljeAukeaa);
+                if (suljeAukeaa == -1 || suljeSulkeutuu == -1) {
+                    throw new ParserException("Komento kirjoitettu väärin oikea tapa: #nimi[p1;p2]"); //virhe
+                }
 
-    public String maaritaFunktioidenArvot(String koodi) {
-        int i;
-        //etsitään #-merkkejä, koska se tarkoittaa funktiota
-        while ((i = koodi.lastIndexOf("#")) != -1) { //HUOM. käytetään lastIndexOf()
-            int suljeAukeaa = koodi.indexOf("[",i);
-            int suljeSulkeutuu = koodi.indexOf("]",suljeAukeaa);
+                String komennonNimi = rivi.substring(i + 1, suljeAukeaa);
+                String p = rivi.substring(suljeAukeaa + 1, suljeSulkeutuu); //sulkeiden sisällä oleva teksti
+                String[] params = p.split(";");
+                if (komennot.get(komennonNimi) == null) {
+                    throw new ParserException("Ei ole komento:" + komennonNimi);
+                }
+                String value;
+                try {
+                    //Komento palauttaa arvon, joka kuuluu laittaa komennon tilalle
+                    value = komennot.get(komennonNimi).run(params, this);
+                } catch (KomentoVirhe e) {
+                    //Komennon suorituksessa virhe
+                    e.printStackTrace();
+                    //Ohjelman suoritus ei voi jatkua
+                    if (e.isFatal()) throw new ParserException(e.getMessage());
+                    value = e.getKorvaavaTeksti(); //komennot voivat silti laittaa jonkin arvon
+                }
 
-            String komennonNimi = koodi.substring(i+1, suljeAukeaa);
-            String p = koodi.substring(suljeAukeaa+1,suljeSulkeutuu); //sulkeiden sisällä oleva teksti
-            String[] params = p.split(";");
-
-            //Komento palauttaa arvon, joka kuuluu laittaa komennon tilalle
-            String value = komennot.get(komennonNimi).run(params,this);
-
-            //TODO tämä saattaa perjaatteessa olla ongelma,
-            // jos tulevaisuudessa muuttujien arvot muuttuvat kesken suorituksen
-            koodi = koodi.replace("#"+komennonNimi+"["+p+"]",value);
+                rivi = rivi.replace("#" + komennonNimi + "[" + p + "]", value);
+                rivit[j] = rivi;
+            }
         }
-        return koodi;
+        return stringUtil.rivitYhdeksiMerkkijonoksi(rivit);
     }
-    public List<Instruction> parse(String koodi, String[] muuttujat, String[] arvot) {
+
+    public List<Instruction> parse(String koodi, String[] muuttujat, String[] arvot) throws ParserException {
         ArrayList<Instruction> ohjeet = new ArrayList<>();
-
-        koodi = korvaaMuuttujatArvoilla(koodi,muuttujat,arvot);
-        this.merkitsevatNumerot = getMerkitsevatNumerot(arvot);
+        this.muuttujat.addAll(Arrays.asList(muuttujat));
+        this.arvot.addAll(Arrays.asList(arvot));
+        //poistetaan välilyönnit, joita ennen ei ole \ merkkiä
+        koodi = stringUtil.poistaValilyonnitLatexKielesta(koodi);
+        //Etsitään koodissa määritellyt muuttujat esim: #var = 9
+        koodi = loydaKoodissaMaaritellytMuuttujat(koodi);
+        //Korvataan sekä koodissa määritellyt että käyttäjän määrittelemät muuttujat arvoillaan
+        koodi = korvaaMuuttujatArvoilla(koodi, this.muuttujat, this.arvot);
+        //Selvitetään merkitsevien numeroiden määrä komentoja varten
+        this.merkitsevatNumerot = stringUtil.getMerkitsevatNumerot(arvot);
+        //Suoritetaan komennot
         koodi = maaritaFunktioidenArvot(koodi);
-        // +- on sama kuin -
-        koodi = koodi.replaceAll("\\+\\s*-","-");
-        // -- on sama kuin +
-        koodi = koodi.replaceAll("-\\s*-","+");
-        // 1 * x on sama kuin x
-        koodi = koodi.replaceAll("1\\s*\\*(?=\\s*[a-zäxöåA-ZXÄÖÅ])","");
-        //8*x on sama kuin 8x
-        koodi = koodi.replaceAll("\\*\\s*(?=[a-zäöåA-ZÄÖ])","");
-        //Joskus -- korvaaminen aiheuttaa plussan, jonka ei pitäisi olla olemassa
-        //Esim --b + 9 EI OLE: +b+9
-        koodi = koodi.replaceAll("(?<![\\w)])\\+","");
-
+        //Korvataan esim -- merkinnät + merkillä ja +- merkinnät - merkillä
+        koodi = stringUtil.siistiMatematiikkaa(koodi);
+        //Luodaan ohjeet
         String[] lines = koodi.split("\n");
-        for (String line : lines) {
-            if (line.startsWith("<t>")) { //ei käytetä latex koodia
-                ohjeet.add(new Instruction(line.substring(3), true));
-            } else {
-                //korvataan pilkut latexin pilkuilla
-                line = line.replaceAll(",","{,}");
-                ohjeet.add(new Instruction(line, false));
+        for (String rivi : lines) {
+            if (rivi.startsWith("<t>")) { //ei käytetä latex koodia
+                ohjeet.add(new Instruction(rivi.substring(3), true));
+            } else if (!rivi.startsWith("<ignore>")) {
+                rivi = stringUtil.valmisteleLatexKoodiRivi(rivi);
+                ohjeet.add(new Instruction(rivi, false));
             }
         }
         return ohjeet;
     }
 
+    private String loydaKoodissaMaaritellytMuuttujat(String koodi) {
+        String[] rivit = koodi.split("\n");
+        Pattern setterPatern = Pattern.compile("#\\s*[^=]+\\s*="); //Esim: #aine = Na_3SO
+        for (int i = 0; i < rivit.length; i++) {
+            String line = rivit[i];
+            Matcher matcher = setterPatern.matcher(line);
+            if (matcher.find()) {
+                //Ennen yhtäsuuruus merkkiä, mutta ei #-merkkiä
+                String muuttujaName = line.substring(1, line.indexOf("=")).replaceAll(" ", "");
+                muuttujat.add(muuttujaName);
+                //Jälkeen yhtäsuuruus merkin
+                String muuttujaArvo = line.substring(line.indexOf("=") + 1);
+                arvot.add(muuttujaArvo);
+                rivit[i] = "<ignore>"; //tämä rivi on jo käsitelty
+            }
+        }
+        return stringUtil.rivitYhdeksiMerkkijonoksi(rivit);
+    }
+
     public int getMerkitsevatNumerot() {
         return merkitsevatNumerot;
+    }
+
+    //Käytetään vain testaamiseen
+    public void setMerkitsevatNumerot(int merkitsevatNumerot) {
+        this.merkitsevatNumerot = merkitsevatNumerot;
     }
 }
