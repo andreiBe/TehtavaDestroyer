@@ -191,6 +191,9 @@ public class Controller implements Initializable {
             if (e.getCode() == KeyCode.W) {
                 muuttujatTextField.requestFocus();
             }
+            if (e.getCode() == KeyCode.S) {
+                tallennaTiedosto();
+            }
         }
     }
 }
