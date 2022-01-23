@@ -26,5 +26,7 @@
       </library>
     </orderEntry>
     <orderEntry type="library" name="richtextfx-fat-0.10.6" level="project" />
+    <orderEntry type="library" name="jlatexmath-1.0.7" level="project" />
+    <orderEntry type="library" name="LatexToMath" level="project" />
   </component>
 </module>

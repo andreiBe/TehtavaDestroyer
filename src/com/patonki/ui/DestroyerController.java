@@ -56,4 +56,11 @@ public class DestroyerController {
             list.getChildren().add(box);
         }
     }
+    public void test(String[] values) {
+        int i = 0;
+        for (String key : muuttujat.keySet()) {
+            muuttujat.get(key).setText(values[i]);
+            i++;
+        }
+    }
 }

@@ -1,37 +1,48 @@
 package com.patonki.ui;
 
 import com.patonki.KaavaTiedosto;
-import com.patonki.util.FileManager;
-import javafx.application.Platform;
+import com.patonki.util.TiedostoManager;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.Initializable;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldListCell;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import org.fxmisc.flowless.VirtualizedScrollPane;
 import org.fxmisc.richtext.CodeArea;
+import org.scilab.forge.jlatexmath.TeXConstants;
+import org.scilab.forge.jlatexmath.TeXFormula;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.*;
+import java.util.regex.Matcher;
 
 /**
  * Sisältää käyttöliittymän toiminnallisuuden, eli se mitä tapahtuu kun nappeja painetaan.
  */
 public class Controller implements Initializable {
-    private final FileManager fileManager = new FileManager();
-    public AnchorPane scrollPaneAlue;
-    public TextField muuttujatTextField;
-    public CustomTextArea codeArea;
-    public ListView<String> pohjatListView;
-    private String currentFile;
+    private final TiedostoManager tiedostoManager = new TiedostoManager();
+    public AnchorPane scrollPaneAlue; //aluejohon koodieditori laitetaan
+    public TextField muuttujatTextField; //tekstiruutu johon muuttujat laitetaan
+    public CustomTextArea koodiEditori; //koodieditori
+    public ListView<String> pohjatListView; //vasemmalla oleva tiedosto lista
+    private String currentFile; //tällähetkellä avattu tiedosto
+    //Onko tämänhetkiseen tiedostoon tehty muutoksia viime tallentamisen jälkeen
     private boolean muutoksiaTapahtunut = false;
 
     @Override
@@ -41,10 +52,10 @@ public class Controller implements Initializable {
             avaaTallennaPopUp(); //tarkistaa haluaako käyttäjä tallentaa tiedoston
             System.exit(0); //lopettaa ohjelman
         });
-        codeArea = new CustomTextArea(this);
-        codeArea.setId("codeArea"); //mahdollistaa css avulla muokkaamisen
+        koodiEditori = new CustomTextArea(this);
+        koodiEditori.setId("codeArea"); //mahdollistaa css avulla muokkaamisen
 
-        VirtualizedScrollPane<CodeArea> scrollPane = new VirtualizedScrollPane<>(codeArea);
+        VirtualizedScrollPane<CodeArea> scrollPane = new VirtualizedScrollPane<>(koodiEditori);
         //Asetetaan scrollPane siten, että se täyttää koko tilan
         AnchorPane.setRightAnchor(scrollPane, 0d);
         AnchorPane.setLeftAnchor(scrollPane, 0d);
@@ -56,20 +67,25 @@ public class Controller implements Initializable {
         //Tekee solut editoitaviksi tuplaklikkaamalla
         pohjatListView.setCellFactory(TextFieldListCell.forListView());
         //Kun käyttäjä muokkaa tekstiä, teksti pitää ehkä tallentaa
-        codeArea.textProperty().addListener((observable, oldValue, newValue) -> {
+        koodiEditori.textProperty().addListener((observable, oldValue, newValue) -> {
             muutoksiaTapahtunut = true;
         });
         muuttujatTextField.textProperty().addListener((observable, oldValue, newValue) -> {
             muutoksiaTapahtunut = true;
+            //päivitetään koodieditori, jotta uudet muuttujat voidaan värittää
+            koodiEditori.updateHighlighting();
         });
+        //Uudelleen nimeäminen
         pohjatListView.setOnEditCommit(event -> {
             String uusiNimi = event.getNewValue();
             String vanhaNimi = event.getSource().getItems().get(event.getIndex());
-            if (fileManager.renameFile(vanhaNimi, uusiNimi)) { //uudelleen nimeäminen onnistui
-                currentFile = uusiNimi;
-                codeArea.requestFocus(); //focus teksti alueeseen
+            if (tiedostoManager.renameFile(vanhaNimi, uusiNimi)) { //uudelleen nimeäminen onnistui
+                setCurrentFile(uusiNimi);
+                koodiEditori.requestFocus(); //focus teksti alueeseen
                 pohjatListView.getItems().set(event.getIndex(),uusiNimi);
-            } //TODO error message
+            } else {
+                Ohjelma.error(new Exception("Uudelleen nimeäminen epäonnistui!"));
+            }
         });
         pohjatListView.setOnKeyReleased(e -> {
             //Poistetaan jokin listasta
@@ -77,28 +93,31 @@ public class Controller implements Initializable {
                 String valittu = getValittuTiedosto();
                 if (valittu != null) {
                     //Poistetaan sekä oikea tiedosto että listan kohta
-                    fileManager.deleteFile(valittu);
-                    pohjatListView.getItems().remove(valittu);
+                    if (tiedostoManager.deleteFile(valittu)) {
+                        pohjatListView.getItems().remove(valittu);
+                    } else {
+                        Ohjelma.error(new Exception("Tiedoston poistaminen ei onnistunut!"));
+                    }
                 }
             }
         });
         //Lisätään kaikki tiedostot kansiosta "pohjat" listaan
-        String[] tiedostot = fileManager.tiedostotPohjatKansiossa();
+        String[] tiedostot = tiedostoManager.tiedostotPohjatKansiossa();
         for (String tiedosto : tiedostot) {
             pohjatListView.getItems().add(tiedosto);
         }
-        currentFile = fileManager.uniqueFile(); //aluksi avataan nimeämätön tiedosto
+        setCurrentFile(tiedostoManager.uniqueFile()); //aluksi avataan nimeämätön tiedosto
         Ohjelma.STAGE.setOnShown(e -> {
             //Focus on aluksi kirjoitusalueella
-            codeArea.requestFocus();
+            koodiEditori.requestFocus();
         });
     }
 
     public void lisaaPohja(ActionEvent event) { //Tapahtuu, kun käyttäjä painaa "lisää" nappia
-        String uusiTiedosto = fileManager.uniqueFile();
+        String uusiTiedosto = tiedostoManager.uniqueFile();
         pohjatListView.getItems().add(uusiTiedosto);
         try {
-            fileManager.saveFile(uusiTiedosto, "", "");
+            tiedostoManager.saveFile(uusiTiedosto, "", "");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -115,8 +134,9 @@ public class Controller implements Initializable {
 
     //Kysyy käyttäjältä haluaako tallentaa nykyisen tiedoston.
     // Kysyy vain jos muutoksia on tapahtunut viimeisimmästä tallennuskerrasta.
+    //Ei tallenna lmath tiedostoja
     public void avaaTallennaPopUp() {
-        if (muutoksiaTapahtunut) {
+        if (muutoksiaTapahtunut && !currentFile.endsWith(".mla")) {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setTitle("Tallennatko?");
             alert.setContentText("Haluatko tallentaa nykyisen tiedoston: " + currentFile);
@@ -129,8 +149,12 @@ public class Controller implements Initializable {
     }
 
     public List<String> getMuuttujatAsList() {
-        if (muuttujatTextField.getText().isEmpty()) return new ArrayList<>();
-        return new ArrayList<>(Arrays.asList(muuttujatTextField.getText().split(",")));
+        if (muuttujatTextField.getText().trim().isEmpty()) return new ArrayList<>();
+        String[] muuttujat = muuttujatTextField.getText().split(",");
+        for (int i = 0; i < muuttujat.length; i++) {
+            muuttujat[i] = muuttujat[i].trim();
+        }
+        return new ArrayList<>(Arrays.asList(muuttujat));
     }
 
     //Tapahtuu, kun listaa klikataan
@@ -140,33 +164,39 @@ public class Controller implements Initializable {
             if (tiedostoNimi != null) { //käyttäjä klikkaa tiedostoa eikä tyhjää tilaa
                 avaaTallennaPopUp(); //kysyy haluaako käyttäjä tallentaa nykyisen tiedoston ennen siirtymistä
                 try {
-                    KaavaTiedosto tiedosto = fileManager.readFile(tiedostoNimi);
+                    KaavaTiedosto tiedosto = tiedostoManager.readFile(tiedostoNimi);
 
-                    codeArea.setText(tiedosto.getKoodi());
+                    koodiEditori.setText(tiedosto.getKoodi());
                     muuttujatTextField.setText(tiedosto.getMuuttujat());
                     muutoksiaTapahtunut = false;
-                    currentFile = tiedostoNimi;
+                    setCurrentFile(tiedostoNimi);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
         }
     }
-
+    private void setCurrentFile(String value) {
+        koodiEditori.setEditable(!value.endsWith(".lma"));
+        this.currentFile = value;
+    }
     private KaavaTiedosto tallennaTiedosto() {
-        String koodi = codeArea.getText();
-        String muuttujat = muuttujatTextField.getText();
         String tiedosto = currentFile;
+        if (tiedosto.endsWith(".lma")) {
+            Ohjelma.error(new Exception("Lmath tiedostoja ei voi muokata tai tallentaa"));
+        }
+        String koodi = koodiEditori.getText();
+        String muuttujat = muuttujatTextField.getText().replace(" ","");
         muutoksiaTapahtunut = false;
         //Jos lista ei jostain syystä sisällä tiedostoa lisätään se sinne
         if (!pohjatListView.getItems().contains(tiedosto)) pohjatListView.getItems().add(tiedosto);
         try {
             //tallennetaan tiedosto
-            fileManager.saveFile(tiedosto, koodi, muuttujat);
+            tiedostoManager.saveFile(tiedosto, koodi, muuttujat);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return new KaavaTiedosto(koodi, muuttujat, tiedosto);
+        return new KaavaTiedosto(koodi, muuttujat);
     }
 
     //Tapahtuu, kun "luo" nappia painetaan
@@ -175,6 +205,19 @@ public class Controller implements Initializable {
         //Luodaan avautuva ikkuna ja näytetään se
         TehtavaDestroyer tehtavaDestroyer = new TehtavaDestroyer(tiedosto);
         tehtavaDestroyer.show();
+    }
+    public void avaaTiedosto(ActionEvent e) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Teksti tiedostot","*.txt","*.lma")
+        );
+        File file = fileChooser.showOpenDialog(Ohjelma.STAGE);
+        if (file == null) return;
+        if (tiedostoManager.avaaTiedosto(file.getAbsolutePath())) {
+            pohjatListView.getItems().add(file.getName());
+        } else {
+            Ohjelma.error(new Exception("Tiedoston avaaminen epäonnistui!"));
+        }
     }
 
     public void shortCut(KeyEvent e) {
@@ -186,13 +229,25 @@ public class Controller implements Initializable {
                 pohjatListView.requestFocus();
             }
             if (e.getCode() == KeyCode.T) {
-                codeArea.requestFocus();
+                koodiEditori.requestFocus();
             }
             if (e.getCode() == KeyCode.W) {
                 muuttujatTextField.requestFocus();
             }
             if (e.getCode() == KeyCode.S) {
                 tallennaTiedosto();
+            }
+            //Hei koodin tutkija olet löytänyt ohjelman easter egg ominaisuuden
+            if (e.getCode() == KeyCode.SPACE && e.isShiftDown()) {
+                String latex = koodiEditori.getText();
+                latex = latex.replaceAll("\n", Matcher.quoteReplacement("\\\\"));
+                latex = latex.replaceAll("(?<!\\\\) ",Matcher.quoteReplacement("\\ "));
+                TeXFormula formula = new TeXFormula(latex);
+                java.awt.Image awtImage = formula.createBufferedImage(TeXConstants.STYLE_TEXT, 20, java.awt.Color.BLACK, null);
+                Image fxImage = SwingFXUtils.toFXImage((BufferedImage) awtImage, null);
+                ImageView view = new ImageView(fxImage);
+                Stage stage = new Stage();
+                stage.setScene(new Scene(new VBox(view))); stage.show();
             }
         }
     }

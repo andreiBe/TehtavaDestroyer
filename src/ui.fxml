@@ -18,6 +18,7 @@
                   <VBox AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
                      <children>
                         <Button maxWidth="99999.0" mnemonicParsing="false" onAction="#lisaaPohja" text="Lisää" VBox.vgrow="ALWAYS" />
+                        <Button layoutX="10.0" layoutY="10.0" maxWidth="99999.0" mnemonicParsing="false" onAction="#avaaTiedosto" text="Avaa" />
                         <ListView fx:id="pohjatListView" editable="true" layoutX="-9.0" layoutY="123.0" onMouseClicked="#listViewClicked" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" VBox.vgrow="ALWAYS">
                            <effect>
                               <Reflection />

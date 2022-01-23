@@ -1,0 +1,13 @@
+<start>
+a*x^2+b*x+c=0
+#juuri = b^2-4*a*c
+#dis = #count[juuri]
+#jako = #count[2*a]
+=\frac{-b\ \pm\sqrt{juuri}}{2*a}
+=\frac{#count[-b]\pm\sqrt{dis}}{jako}
+=\frac{#count[-b]\pm#ifInt[(dis)^0.5 ; \sqrt{dis}]}{jako}
+x=\frac{#ifInt[-b+(dis)^0.5 ; #count[-b]+\sqrt{dis}]}{jako}#ifInt[(-b+(dis)^0.5)/jako]
+<t>tai
+x=\frac{#ifInt[-b-(dis)^0.5 ; #count[-b]-\sqrt{dis}]}{jako}#ifInt[(-b-(dis)^0.5)/(jako)]
+<end>
+a,b,c

@@ -1,0 +1,4 @@
+kemia.txt
+konsentraatio.txt
+toisen asteen yhtälö.txt
+jou.lma

@@ -11,6 +11,7 @@ import java.util.List;
  */
 public class Kirjoittaja {
     private Robot robot; //Robootin avulla voi simuloida napin painalluksia
+
     public Kirjoittaja() {
         try {
             robot = new Robot();
@@ -18,12 +19,14 @@ public class Kirjoittaja {
             e.printStackTrace();
         }
     }
+
     //Painaa nappia ja vapauttaa sen myöhemmin
     private void press(int code) {
         robot.keyPress(code);
         robot.delay(100);
         robot.keyRelease(code);
     }
+
     //Kirjoittaa tekstin kopioimalla sen leike pöydälle ja liittämällä sen
     private void type(String message) {
         StringSelection stringSelection = new StringSelection(message);
@@ -35,6 +38,7 @@ public class Kirjoittaja {
         robot.keyRelease(KeyEvent.VK_V);
         robot.keyRelease(KeyEvent.VK_CONTROL);
     }
+
     public void teeTehtava(List<Instruction> list) {
         for (Instruction instruction : list) {
             if (!instruction.isJustText()) {

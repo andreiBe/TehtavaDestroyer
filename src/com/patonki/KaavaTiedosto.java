@@ -7,12 +7,10 @@ package com.patonki;
 public class KaavaTiedosto {
     private final String koodi;
     private final String muuttujat;
-    private final String nimi;
 
-    public KaavaTiedosto(String koodi, String muuttujat, String nimi) {
+    public KaavaTiedosto(String koodi, String muuttujat) {
         this.koodi = koodi;
         this.muuttujat = muuttujat;
-        this.nimi = nimi;
     }
 
     public String getKoodi() {
@@ -25,9 +23,5 @@ public class KaavaTiedosto {
     public String[] getMuuttujatArray() {
         if (muuttujat.trim().length()==0) return new String[0];
         else return muuttujat.split(",");
-    }
-
-    public String getNimi() {
-        return nimi;
     }
 }

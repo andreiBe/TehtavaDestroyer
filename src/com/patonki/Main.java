@@ -1,9 +1,12 @@
 package com.patonki;
 
 import com.patonki.ui.Ohjelma;
+import com.patonki.util.NativeUtils;
+
+import java.io.IOException;
 
 /**
- * Ainut tehtävä on kutsua {@link Ohjelma#aloita()} metodia
+ * Kutsuu {@link Ohjelma#aloita()} metodia
  */
 public class Main {
 

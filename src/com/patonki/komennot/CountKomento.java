@@ -3,6 +3,7 @@ package com.patonki.komennot;
 import com.fathzer.soft.javaluator.DoubleEvaluator;
 import com.patonki.Komento;
 import com.patonki.KoodiParser;
+import com.patonki.LatexToMath;
 import com.patonki.virheet.KomentoVirhe;
 
 import java.math.BigDecimal;
@@ -17,13 +18,9 @@ public class CountKomento implements Komento {
         if (params.length == 0) throw new KomentoVirhe("Liian vähän parametreja:0","null",true);
         //Luokka, jolla voi laskea merkkijono laskuja
         DoubleEvaluator evaluator = new DoubleEvaluator();
-        //Korvataan suomalaisten suosimat pilkut pisteillä
-        String lasku = params[0].replace(",",".");
-        //poistetaan latex sulkeet: \left( ja \right( --> ( ja )
-        lasku = lasku.replace("\\left","");
-        lasku = lasku.replace("\\right","");
-        lasku = lasku.replace("\\cdot","*");
-
+        String lasku = params[0];
+        //lasku on ehkä kirjoitettu latex kielellä
+        lasku = LatexToMath.parseExpression(lasku);
         int merkitsevat;
         if (params.length > 1) {
             String tarkkuus = params[1];
@@ -60,11 +57,11 @@ public class CountKomento implements Komento {
             if (e.getMessage().equals("Infinite or NaN"))
                 throw new KomentoVirhe("Nollalla jakaminen tai neliöjuuri negatiivisesta luvusta",
                         "Ei\\ voi\\ laskea");
-            throw new KomentoVirhe("Laskemisessa ongelma: "+lasku,"",true);
+            throw new KomentoVirhe("Laskussa ongelma: "+lasku,"",true);
         }
         catch (RuntimeException e) {
             e.printStackTrace();
-            throw new KomentoVirhe("Laskemisessa ongelma: "+lasku,"",true);
+            throw new KomentoVirhe("Laskussa ongelma: "+lasku,"",true);
         }
     }
     private String max5Decimaalia(BigDecimal bigDecimal) {

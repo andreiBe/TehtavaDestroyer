@@ -1,0 +1,13 @@
+<start>
+V\ =\ tilavuus l
+M\left(aine\right)=moolimassa\ \frac{g}{mol}
+c\left(aine\right)=konsentraatio\ \frac{mol}{l}
+m\left(aine\right)=?
+n=\frac{m}{M}
+c=\frac{n}{V}
+c=\frac{\frac{m}{M}}{V}
+m=cVM
+m\left(aine\right)\ =konsentraatio mol/l\ \cdot tilavuus l\cdot moolimassa g/mol
+m\left(aine\right)= #count[konsentraatio * tilavuus * moolimassa;+2] g
+<end>
+aine,konsentraatio,tilavuus,moolimassa

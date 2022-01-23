@@ -1,9 +1,11 @@
 package com.patonki.ui;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
@@ -13,6 +15,7 @@ import javafx.stage.Stage;
  */
 public class Ohjelma extends Application {
     public static Stage STAGE;
+    public static Controller CONTROLLER;
 
     public static void aloita() {
         // Kutsuu start metodia uudessa javafx threadissä
@@ -30,7 +33,7 @@ public class Ohjelma extends Application {
         Parent parent = fxml.load();
 
         Controller controller = fxml.getController();
-
+        CONTROLLER = controller;
         Scene scene = new Scene(parent);
         primaryStage.setScene(scene);
         //Ohjataan eventit Controllerille
@@ -38,5 +41,15 @@ public class Ohjelma extends Application {
         primaryStage.getIcons().add(new Image("/book.png"));
         primaryStage.setTitle("Tehtävä destroyer 69");
         primaryStage.show();
+    }
+    public static void error(Exception e) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setX(40);
+            alert.setY(40);
+            alert.setContentText(e.getMessage());
+            alert.setTitle("Error!");
+            alert.showAndWait();
+        });
     }
 }
