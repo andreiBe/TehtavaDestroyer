@@ -1,14 +1,11 @@
 package com.patonki.ui;
 
-import com.patonki.Kirjoittaja;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;
 import com.patonki.util.KeyListener;
-import org.jnativehook.keyboard.NativeKeyEvent;
-import org.jnativehook.keyboard.NativeKeyListener;
 
-import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -46,32 +43,6 @@ public class GlobalKeyListener implements NativeKeyListener {
         for (KeyListener<Integer> listener : listeners) {
             listener.run(key, cntrl != null && cntrl);
         }
-        Boolean shift = pressedKeys.get(42);
-        //Random bugi, että potenssi nappia ei voi painaa, kun tämä kuuntelee nappeja???
-        if (shift != null && shift && key==39 && !block) {
-            System.out.println("Potenssi nappia painettu");
-            //painaPotenssiNappia();
-        }
-    }
-    private static boolean block = false;
-    public static void painaPotenssiNappia() {
-        block = true;
-        try {
-            Robot robot = new Robot();
-            robot.keyPress(KeyEvent.VK_SHIFT);
-            robot.keyPress(KeyEvent.VK_CIRCUMFLEX);
-            robot.keyRelease(KeyEvent.VK_CIRCUMFLEX);
-            robot.keyRelease(KeyEvent.VK_SHIFT);
-        } catch (AWTException e) {
-            e.printStackTrace();
-        }
-        Timer timer = new Timer();
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                block = false;
-            }
-        }, 1000);
     }
 
 }

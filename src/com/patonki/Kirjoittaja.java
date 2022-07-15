@@ -10,16 +10,15 @@ import java.util.List;
  * Luokka, joka pystyy kirjoittamaan latex koodia ja perus tekstiä vastauskenttiin.
  */
 public class Kirjoittaja {
-    private Robot robot; //Robootin avulla voi simuloida napin painalluksia
+    private static Robot robot; //Robootin avulla voi simuloida napin painalluksia
 
-    public Kirjoittaja() {
+    static {
         try {
             robot = new Robot();
         } catch (AWTException e) {
             e.printStackTrace();
         }
     }
-
     //Painaa nappia ja vapauttaa sen myöhemmin
     private void press(int code) {
         robot.keyPress(code);

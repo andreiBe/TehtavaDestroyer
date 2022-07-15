@@ -29,10 +29,11 @@ public class DestroyerController {
     public void initializeUi(String[] muuttujat, int fkey) {
         lab.setText("Paina control +f" + fkey + " suorittaaksesi");
         for (int i = 0; i < muuttujat.length; i++) {
-            String muuttuja = muuttujat[i];
+            String muuttuja = muuttujat[i].trim();
             HBox box = new HBox(); //mahdollistaa elementtien laittamisen vierekkäin
-            Label lab = new Label(muuttuja + ":"); //selite
+            Label lab = new Label(muuttuja + ":");
             lab.setId("muuttujaLabel"); //css id
+
             TextField field = new TextField();
             fields.add(field);
             int finalI = i;
@@ -49,18 +50,11 @@ public class DestroyerController {
                     }
                 }
             });
-            //Muuttujaa vastaa tämä teksti ruutu
+            //Muuttujaa vastaa teksti ruutu
             this.muuttujat.put(muuttuja, field);
             HBox.setHgrow(field, Priority.ALWAYS); //tekstiruutu venyy koko ruudun täyttäväksi
             box.getChildren().addAll(lab, field);
             list.getChildren().add(box);
-        }
-    }
-    public void test(String[] values) {
-        int i = 0;
-        for (String key : muuttujat.keySet()) {
-            muuttujat.get(key).setText(values[i]);
-            i++;
         }
     }
 }

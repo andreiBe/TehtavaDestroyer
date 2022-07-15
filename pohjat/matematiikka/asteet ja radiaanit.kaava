@@ -1,0 +1,10 @@
+#a,ra
+#Muuttaa asteet radiaaneiksi tai toisinpäin
+object = vars()
+if (object.ra == "?") {
+    line1 = s("a  ° = a * 1° = a * (pi/180) rad = ") + sl("a*(pi/180)") + " rad"
+    return latex([line1])
+} else {
+    line1 = s("ra rad = ra * 1rad = ra * (180°)/(pi) \\approx ") + sd("ra * (180/pi)") + " °"
+    return latex([line1])
+}

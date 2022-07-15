@@ -6,8 +6,16 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.TextArea;
 import javafx.scene.image.Image;
+import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 /**
  * Avaa ui ikkunan ja lataa sen elementit fxml tiedostosta.
@@ -17,8 +25,10 @@ public class Ohjelma extends Application {
     public static Stage STAGE;
     public static Controller CONTROLLER;
 
+    public static final Logger logger = LogManager.getLogger(Ohjelma.class);
+
     public static void aloita() {
-        // Kutsuu start metodia uudessa javafx threadissä
+        // Kutsuu start metodia luoden uuden javafx threadin
         launch(Ohjelma.class);
     }
 
@@ -38,17 +48,31 @@ public class Ohjelma extends Application {
         primaryStage.setScene(scene);
         //Ohjataan eventit Controllerille
         scene.setOnKeyReleased(controller::shortCut);
+
         primaryStage.getIcons().add(new Image("/book.png"));
         primaryStage.setTitle("Tehtävä destroyer 69");
         primaryStage.show();
+        primaryStage.setOnCloseRequest(e -> {
+            System.exit(0);
+        });
     }
+    //luokkametodi, jolla voi näyttää ilmoituksen, joka näyttää käyttäjälle virheen
     public static void error(Exception e) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setX(40);
-            alert.setY(40);
-            alert.setContentText(e.getMessage());
+            logger.log(Level.TRACE, "Caught error: "+e.getMessage());
+            e.printStackTrace();
+
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            String exceptionAsString = sw.toString();
+
+            logger.log(Level.TRACE,exceptionAsString);
+
+            Stage alert = new Stage();
+            BorderPane root = new BorderPane(new TextArea(exceptionAsString));
+            alert.setScene(new Scene(root));
             alert.setTitle("Error!");
+            alert.setAlwaysOnTop(true);
             alert.showAndWait();
         });
     }

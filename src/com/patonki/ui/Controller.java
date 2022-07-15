@@ -1,253 +1,197 @@
 package com.patonki.ui;
 
-import com.patonki.KaavaTiedosto;
-import com.patonki.util.TiedostoManager;
-import javafx.embed.swing.SwingFXUtils;
-import javafx.event.ActionEvent;
+import com.patonki.helper.FileHandler;
+import com.patonki.util.TiedostoUtil;
 import javafx.fxml.Initializable;
-import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
-import javafx.scene.control.cell.TextFieldListCell;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
-import org.fxmisc.flowless.VirtualizedScrollPane;
-import org.fxmisc.richtext.CodeArea;
-import org.scilab.forge.jlatexmath.TeXConstants;
-import org.scilab.forge.jlatexmath.TeXFormula;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 
-import java.awt.image.BufferedImage;
+import javax.rmi.CORBA.Tie;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.util.*;
-import java.util.regex.Matcher;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Optional;
+import java.util.ResourceBundle;
 
 /**
- * Sisältää käyttöliittymän toiminnallisuuden, eli se mitä tapahtuu kun nappeja painetaan.
+ * Sisältää käyttöliittymän toiminnallisuuden
  */
 public class Controller implements Initializable {
-    private final TiedostoManager tiedostoManager = new TiedostoManager();
-    public AnchorPane scrollPaneAlue; //aluejohon koodieditori laitetaan
-    public TextField muuttujatTextField; //tekstiruutu johon muuttujat laitetaan
-    public CustomTextArea koodiEditori; //koodieditori
-    public ListView<String> pohjatListView; //vasemmalla oleva tiedosto lista
-    private String currentFile; //tällähetkellä avattu tiedosto
-    //Onko tämänhetkiseen tiedostoon tehty muutoksia viime tallentamisen jälkeen
-    private boolean muutoksiaTapahtunut = false;
+    public TreeView<String> treeview; //vasemmalla oleva tiedostolista
+    private String currentFile; //tällä hetkellä avattu tiedosto
+    //tab1
+    public Label valittuLabel;
+    public Label kuvaus;
+    //tab2
+    public TextField yhtalo;
+    public TextField muuttujat;
+    public HBox yksikot;
+    public HBox ulkomuoto;
 
+    private TreeItem<String> omatKaavat;
+
+    private final String OMAT_KAAVAT = "omat kaavat";
+
+    private TreeItem<String> rakennaPuu(TiedostoUtil.Tiedosto tiedosto) {
+        TreeItem<String> item = new TreeItem<>(tiedosto.getNimi());
+        if (tiedosto.getNimi().equals(OMAT_KAAVAT))
+            omatKaavat = item;
+        for (TiedostoUtil.Tiedosto lapsi : tiedosto.getLapset()) {
+            if (lapsi.getNimi().equals("lib")) continue;
+            if (lapsi.getNimi().equals("temp.kaava")) continue;
+            item.getChildren().add( rakennaPuu(lapsi) );
+        }
+        return item;
+    }
+    private String getPathOfTreeItem(TreeItem<String> item) {
+        StringBuilder pathBuilder = new StringBuilder();
+        for (; item != null ; item = item.getParent()) {
+            pathBuilder.insert(0, item.getValue());
+            if (item.getParent() != null) pathBuilder.insert(0, "/");
+        }
+        return pathBuilder.toString();
+    }
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        //Kun ikkuna yritetään sulkea
-        Ohjelma.STAGE.setOnCloseRequest(e -> {
-            avaaTallennaPopUp(); //tarkistaa haluaako käyttäjä tallentaa tiedoston
-            System.exit(0); //lopettaa ohjelman
-        });
-        koodiEditori = new CustomTextArea(this);
-        koodiEditori.setId("codeArea"); //mahdollistaa css avulla muokkaamisen
-
-        VirtualizedScrollPane<CodeArea> scrollPane = new VirtualizedScrollPane<>(koodiEditori);
-        //Asetetaan scrollPane siten, että se täyttää koko tilan
-        AnchorPane.setRightAnchor(scrollPane, 0d);
-        AnchorPane.setLeftAnchor(scrollPane, 0d);
-        AnchorPane.setTopAnchor(scrollPane, 0d);
-        AnchorPane.setBottomAnchor(scrollPane, 0d);
-        scrollPaneAlue.getChildren().add(scrollPane);
-
-
-        //Tekee solut editoitaviksi tuplaklikkaamalla
-        pohjatListView.setCellFactory(TextFieldListCell.forListView());
-        //Kun käyttäjä muokkaa tekstiä, teksti pitää ehkä tallentaa
-        koodiEditori.textProperty().addListener((observable, oldValue, newValue) -> {
-            muutoksiaTapahtunut = true;
-        });
-        muuttujatTextField.textProperty().addListener((observable, oldValue, newValue) -> {
-            muutoksiaTapahtunut = true;
-            //päivitetään koodieditori, jotta uudet muuttujat voidaan värittää
-            koodiEditori.updateHighlighting();
-        });
-        //Uudelleen nimeäminen
-        pohjatListView.setOnEditCommit(event -> {
-            String uusiNimi = event.getNewValue();
-            String vanhaNimi = event.getSource().getItems().get(event.getIndex());
-            if (tiedostoManager.renameFile(vanhaNimi, uusiNimi)) { //uudelleen nimeäminen onnistui
-                setCurrentFile(uusiNimi);
-                koodiEditori.requestFocus(); //focus teksti alueeseen
-                pohjatListView.getItems().set(event.getIndex(),uusiNimi);
-            } else {
-                Ohjelma.error(new Exception("Uudelleen nimeäminen epäonnistui!"));
-            }
-        });
-        pohjatListView.setOnKeyReleased(e -> {
-            //Poistetaan jokin listasta
-            if (e.getCode() == KeyCode.DELETE) {
-                String valittu = getValittuTiedosto();
-                if (valittu != null) {
-                    //Poistetaan sekä oikea tiedosto että listan kohta
-                    if (tiedostoManager.deleteFile(valittu)) {
-                        pohjatListView.getItems().remove(valittu);
-                    } else {
-                        Ohjelma.error(new Exception("Tiedoston poistaminen ei onnistunut!"));
-                    }
-                }
-            }
-        });
-        //Lisätään kaikki tiedostot kansiosta "pohjat" listaan
-        String[] tiedostot = tiedostoManager.tiedostotPohjatKansiossa();
-        for (String tiedosto : tiedostot) {
-            pohjatListView.getItems().add(tiedosto);
-        }
-        setCurrentFile(tiedostoManager.uniqueFile()); //aluksi avataan nimeämätön tiedosto
-        Ohjelma.STAGE.setOnShown(e -> {
-            //Focus on aluksi kirjoitusalueella
-            koodiEditori.requestFocus();
-        });
-    }
-
-    public void lisaaPohja(ActionEvent event) { //Tapahtuu, kun käyttäjä painaa "lisää" nappia
-        String uusiTiedosto = tiedostoManager.uniqueFile();
-        pohjatListView.getItems().add(uusiTiedosto);
         try {
-            tiedostoManager.saveFile(uusiTiedosto, "", "");
+            TiedostoUtil.Tiedosto tiedostot = TiedostoUtil.tiedostotPohjatKansiossa();
+            treeview.setRoot( rakennaPuu(tiedostot) );
+            treeview.setShowRoot(false);
+
+            MultipleSelectionModel<TreeItem<String>> selectionModel = treeview.getSelectionModel();
+            selectionModel.selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue == null || newValue.getChildren().size() != 0) return;
+                String path = getPathOfTreeItem(newValue);
+                setCurrentFile(path);
+            });
         } catch (IOException e) {
-            e.printStackTrace();
+            Ohjelma.error(e);
         }
-    }
+        muuttujat.textProperty().addListener((observable, oldValue, newValue) -> {
+            String[] muuttujat = newValue.split(",");
 
-    //Palauttaa listan solun, joka on valittuna tai null, jos mitään ei olla valittu
-    private String getValittuTiedosto() {
-        List<String> list = pohjatListView.getSelectionModel().getSelectedItems();
-        if (!list.isEmpty()) {
-            return list.get(0);
-        }
-        return null;
-    }
-
-    //Kysyy käyttäjältä haluaako tallentaa nykyisen tiedoston.
-    // Kysyy vain jos muutoksia on tapahtunut viimeisimmästä tallennuskerrasta.
-    //Ei tallenna lmath tiedostoja
-    public void avaaTallennaPopUp() {
-        if (muutoksiaTapahtunut && !currentFile.endsWith(".mla")) {
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle("Tallennatko?");
-            alert.setContentText("Haluatko tallentaa nykyisen tiedoston: " + currentFile);
-            alert.getButtonTypes().setAll(ButtonType.NO, ButtonType.YES);
-            Optional<ButtonType> result = alert.showAndWait();
-            if (result.isPresent() && result.get() == ButtonType.YES) {
-                tallennaTiedosto(); //Käyttäjä painoi yes nappia
+            yksikot.getChildren().clear(); ulkomuoto.getChildren().clear();
+            if (muuttujat.length == 1 && muuttujat[0].isEmpty()) return;
+            for (int i = 0; i < muuttujat.length; i++) {
+                yksikot.getChildren().add(createTextField());
+                ulkomuoto.getChildren().add(createTextField());
             }
-        }
+        });
+
     }
-
-    public List<String> getMuuttujatAsList() {
-        if (muuttujatTextField.getText().trim().isEmpty()) return new ArrayList<>();
-        String[] muuttujat = muuttujatTextField.getText().split(",");
-        for (int i = 0; i < muuttujat.length; i++) {
-            muuttujat[i] = muuttujat[i].trim();
-        }
-        return new ArrayList<>(Arrays.asList(muuttujat));
-    }
-
-    //Tapahtuu, kun listaa klikataan
-    public void listViewClicked(MouseEvent event) {
-        if (event.getClickCount() == 1) { //ei tuplaklikki
-            String tiedostoNimi = getValittuTiedosto();
-            if (tiedostoNimi != null) { //käyttäjä klikkaa tiedostoa eikä tyhjää tilaa
-                avaaTallennaPopUp(); //kysyy haluaako käyttäjä tallentaa nykyisen tiedoston ennen siirtymistä
-                try {
-                    KaavaTiedosto tiedosto = tiedostoManager.readFile(tiedostoNimi);
-
-                    koodiEditori.setText(tiedosto.getKoodi());
-                    muuttujatTextField.setText(tiedosto.getMuuttujat());
-                    muutoksiaTapahtunut = false;
-                    setCurrentFile(tiedostoNimi);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+    private TextField createTextField() {
+        TextField field = new TextField();
+        HBox.setHgrow(field, Priority.ALWAYS);
+        return field;
     }
     private void setCurrentFile(String value) {
-        koodiEditori.setEditable(!value.endsWith(".lma"));
-        this.currentFile = value;
-    }
-    private KaavaTiedosto tallennaTiedosto() {
-        String tiedosto = currentFile;
-        if (tiedosto.endsWith(".lma")) {
-            Ohjelma.error(new Exception("Lmath tiedostoja ei voi muokata tai tallentaa"));
-        }
-        String koodi = koodiEditori.getText();
-        String muuttujat = muuttujatTextField.getText().replace(" ","");
-        muutoksiaTapahtunut = false;
-        //Jos lista ei jostain syystä sisällä tiedostoa lisätään se sinne
-        if (!pohjatListView.getItems().contains(tiedosto)) pohjatListView.getItems().add(tiedosto);
-        try {
-            //tallennetaan tiedosto
-            tiedostoManager.saveFile(tiedosto, koodi, muuttujat);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return new KaavaTiedosto(koodi, muuttujat);
-    }
+        this.currentFile = value + ".kaava";
+        String pelkkaNimi = TiedostoUtil.pelkkaNimi(currentFile);
 
-    //Tapahtuu, kun "luo" nappia painetaan
-    public void create(ActionEvent event) {
-        KaavaTiedosto tiedosto = tallennaTiedosto(); //ensin tiedosto tallennetaan
-        //Luodaan avautuva ikkuna ja näytetään se
-        TehtavaDestroyer tehtavaDestroyer = new TehtavaDestroyer(tiedosto);
-        tehtavaDestroyer.show();
+        this.valittuLabel.setText(pelkkaNimi);
+
+        FileHandler handler = new FileHandler(currentFile);
+        String[] rivit = handler.getLines();
+        if (rivit.length >= 2) {
+            String kuvaus = rivit[1].substring(1);
+            this.kuvaus.setText(kuvaus);
+        }
     }
-    public void avaaTiedosto(ActionEvent e) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Teksti tiedostot","*.txt","*.lma")
-        );
-        File file = fileChooser.showOpenDialog(Ohjelma.STAGE);
-        if (file == null) return;
-        if (tiedostoManager.avaaTiedosto(file.getAbsolutePath())) {
-            pohjatListView.getItems().add(file.getName());
-        } else {
-            Ohjelma.error(new Exception("Tiedoston avaaminen epäonnistui!"));
+    //Tapahtuu, kun "käytä kaavaa" nappia painetaan
+    public void create() {
+        //Luodaan avautuva ikkuna ja näytetään se
+        try {
+            TehtavaDestroyer tehtavaDestroyer = new TehtavaDestroyer(currentFile);
+            tehtavaDestroyer.show();
+        } catch (IOException e) {
+            Ohjelma.error(e);
+        }
+    }
+    private String omakaavaBeloScriptKoodina(String kuvaus) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("#").append(muuttujat.getText()).append("\n");
+        builder.append("#").append(kuvaus).append("\n");
+        builder.append("return fysik(\"").append(yhtalo.getText()).append("\",{");
+        String[] muuttujatAr = muuttujat.getText().split(",");
+        if (muuttujatAr.length == 1 && muuttujatAr[0].isEmpty()) muuttujatAr = new String[0];
+
+        for (int i = 0; i < muuttujatAr.length; i++) {
+            String muuttuja = muuttujatAr[i].trim();
+            String yksikko = ((TextField)yksikot.getChildren().get(i)).getText().trim();
+            String ulkomuoto1 = ((TextField)ulkomuoto.getChildren().get(i)).getText().trim();
+            builder.append(muuttuja).append(":{")
+                    .append(yksikko.isEmpty() ? "" : "yks:\""+yksikko+"\"" + (ulkomuoto1.isEmpty() ? "":","))
+                    .append(ulkomuoto1.isEmpty() ? "" : "nimi:\"" + ulkomuoto1+"\"")
+                    .append("}");
+            if (i != muuttujatAr.length-1) builder.append(",");
+        }
+        builder.append("})");
+        return builder.toString();
+    }
+    public void createOma() {
+        final String path = "pohjat/" + OMAT_KAAVAT + "/temp.kaava";
+        try {
+            String koodi = omakaavaBeloScriptKoodina("temp.kaava");
+            TiedostoUtil.kirjoitaTiedostoon(path, koodi);
+
+            TehtavaDestroyer destroyer = new TehtavaDestroyer(path);
+            destroyer.show();
+
+            TiedostoUtil.poistaTiedosto(path);
+        } catch (IOException e) {
+            Ohjelma.error(e);
+        }
+    }
+    private String kysyMerkkijono(String viesti) {
+        TextInputDialog filenameDialog = new TextInputDialog();
+        filenameDialog.setTitle(viesti);
+        filenameDialog.setContentText(viesti);
+        filenameDialog.setHeaderText(null);
+        filenameDialog.setGraphic(null);
+        Optional<String> res = filenameDialog.showAndWait();
+        return res.orElse(null);
+    }
+    public void lisaaKaava() {
+        if (omatKaavat == null) {
+            Ohjelma.error(new Exception("Omat pohjat kansiota ei ole olemassa"));
+            return;
+        }
+        while (true) {
+            String filename = kysyMerkkijono("Tiedostonimi:");
+            if (filename == null) break;
+            String kuvaus = kysyMerkkijono("Kaavan kuvaus:");
+            if (kuvaus == null) kuvaus = filename;
+
+            String koodi = omakaavaBeloScriptKoodina(kuvaus);
+
+            try {
+                TiedostoUtil.kirjoitaTiedostoon("pohjat/"+OMAT_KAAVAT+"/"+filename+".kaava",koodi);
+            } catch (IOException e) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setContentText("Tiedostoa ei voitu luoda");
+                alert.showAndWait();
+                continue;
+            }
+            boolean exists = omatKaavat.getChildren().stream().map(TreeItem::getValue).anyMatch(s -> s.equals(filename));
+            if (!exists) {
+                omatKaavat.getChildren().add(new TreeItem<>(filename));
+            }
+            break;
         }
     }
 
     public void shortCut(KeyEvent e) {
         if (e.isControlDown()) {
             if (e.getCode() == KeyCode.R) {
-                create(null);
+                create();
             }
             if (e.getCode() == KeyCode.E) {
-                pohjatListView.requestFocus();
-            }
-            if (e.getCode() == KeyCode.T) {
-                koodiEditori.requestFocus();
-            }
-            if (e.getCode() == KeyCode.W) {
-                muuttujatTextField.requestFocus();
-            }
-            if (e.getCode() == KeyCode.S) {
-                tallennaTiedosto();
-            }
-            //Hei koodin tutkija olet löytänyt ohjelman easter egg ominaisuuden
-            if (e.getCode() == KeyCode.SPACE && e.isShiftDown()) {
-                String latex = koodiEditori.getText();
-                latex = latex.replaceAll("\n", Matcher.quoteReplacement("\\\\"));
-                latex = latex.replaceAll("(?<!\\\\) ",Matcher.quoteReplacement("\\ "));
-                TeXFormula formula = new TeXFormula(latex);
-                java.awt.Image awtImage = formula.createBufferedImage(TeXConstants.STYLE_TEXT, 20, java.awt.Color.BLACK, null);
-                Image fxImage = SwingFXUtils.toFXImage((BufferedImage) awtImage, null);
-                ImageView view = new ImageView(fxImage);
-                Stage stage = new Stage();
-                stage.setScene(new Scene(new VBox(view))); stage.show();
+                treeview.requestFocus();
             }
         }
     }

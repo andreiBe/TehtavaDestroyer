@@ -8,7 +8,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="javaluator-3.0.2" level="project" />
-    <orderEntry type="library" name="jnativehook-2.1.0" level="project" />
     <orderEntry type="module-library">
       <library name="JUnit5.4">
         <CLASSES>
@@ -28,5 +27,9 @@
     <orderEntry type="library" name="richtextfx-fat-0.10.6" level="project" />
     <orderEntry type="library" name="jlatexmath-1.0.7" level="project" />
     <orderEntry type="library" name="LatexToMath" level="project" />
+    <orderEntry type="library" name="log4j-api-2.17.0" level="project" />
+    <orderEntry type="library" name="log4j-core-2.17.0" level="project" />
+    <orderEntry type="library" name="BeloScript4" level="project" />
+    <orderEntry type="library" name="jnativehook-2.2.2" level="project" />
   </component>
 </module>

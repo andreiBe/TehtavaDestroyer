@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="BeloScript4">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../BeloScript4/out/artifacts/BeloScript4_jar/BeloScript4.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

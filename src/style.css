@@ -7,6 +7,9 @@
 .button {
     -fx-focus-traversable: false;
 }
+.text-field {
+    -fx-prompt-text-fill: lightgray;
+}
 #createButton {
     -fx-font-size: 32px;
 }

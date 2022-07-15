@@ -1,8 +1,8 @@
 package com.patonki.ui;
 
+import com.github.kwhat.jnativehook.GlobalScreen;
+import com.github.kwhat.jnativehook.NativeHookException;
 import com.patonki.util.KeyListener;
-import org.jnativehook.GlobalScreen;
-import org.jnativehook.NativeHookException;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
